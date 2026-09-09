@@ -1,0 +1,38 @@
+[package]
+name = "annien-client"
+version = "0.1.0"
+description = "AnNien - Trợ lý đàm thoại đồng hành thời gian thực cho người cao tuổi"
+authors = ["AnNien Team"]
+edition = "2021"
+
+[lib]
+name = "annien_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-opener = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.38", features = ["full"] }
+tokio-tungstenite = { version = "0.24", default-features = false, features = ["connect", "handshake", "rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+base64 = "0.22"
+cpal = "0.15"
+log = "0.4"
+env_logger = "0.11"
+
+[profile.dev]
+opt-level = 1
+debug = false
+strip = true
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
