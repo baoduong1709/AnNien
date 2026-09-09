@@ -20,9 +20,13 @@ import { ElderPairingScreen } from "./components/ElderPairingScreen";
 import { useLiveSession } from "./hooks/useLiveSession";
 
 export function App() {
-  const [gatewayUrl, setGatewayUrl] = useState<string>(
-    () => localStorage.getItem("annien_gateway_url") || "ws://192.168.1.3:8080/ws/live"
-  );
+  const [gatewayUrl, setGatewayUrl] = useState<string>(() => {
+    const saved = localStorage.getItem("annien_gateway_url");
+    if (saved && saved !== "ws://192.168.1.3:8080/ws/live") {
+      return saved;
+    }
+    return "wss://annien.baoduong.dev/ws/live";
+  });
   const [isSosOpen, setIsSosOpen] = useState<boolean>(false);
   const [isMedOpen, setIsMedOpen] = useState<boolean>(false);
   const [isMoodOpen, setIsMoodOpen] = useState<boolean>(false);

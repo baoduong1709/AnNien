@@ -45,8 +45,10 @@ export function ElderPairingScreen({ gatewayHttpUrl, onUpdateGatewayUrl, onPaire
 
   const handleSaveServerHost = () => {
     let clean = tempHost.trim().replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "").replace(/\/$/, "");
-    if (!clean) clean = "192.168.1.3:8080";
-    const newWsUrl = `ws://${clean}/ws/live`;
+    if (!clean) clean = "annien.baoduong.dev";
+    const isLocal = clean.startsWith("192.168.") || clean.startsWith("localhost") || clean.startsWith("10.") || clean.startsWith("127.");
+    const protocol = isLocal ? "ws://" : "wss://";
+    const newWsUrl = `${protocol}${clean}/ws/live`;
     localStorage.setItem("annien_gateway_url", newWsUrl);
     if (onUpdateGatewayUrl) {
       onUpdateGatewayUrl(newWsUrl);
@@ -235,13 +237,13 @@ export function ElderPairingScreen({ gatewayHttpUrl, onUpdateGatewayUrl, onPaire
                 <span>Cài Đặt IP Máy Chủ</span>
               </h3>
               <p className="text-xs text-stone-500 leading-relaxed">
-                Nhập địa chỉ IP máy tính đang chạy Backend trên cùng mạng Wi-Fi:
+                Nhập địa chỉ tên miền máy chủ hoặc IP mạng LAN:
               </p>
               <input
                 type="text"
                 value={tempHost}
                 onChange={(e) => setTempHost(e.target.value)}
-                placeholder="192.168.1.3:8080"
+                placeholder="annien.baoduong.dev"
                 className="w-full px-4 py-3 rounded-2xl border-2 border-stone-300 font-mono text-sm focus:outline-none focus:border-teal-600 font-bold"
               />
               <div className="flex items-center justify-end gap-2 pt-2">

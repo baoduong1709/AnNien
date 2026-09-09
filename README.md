@@ -1,190 +1,164 @@
-# AnNien (An Nhiên) — Trợ Lý Đàm Thoại Đồng Hành Thời Gian Thực Cho Người Cao Tuổi
+<div align="center">
 
-Dự án **AnNien** là giải pháp trợ lý đàm thoại bằng giọng nói hai chiều (Real-time Conversational Voice AI) được thiết kế chuyên biệt dành riêng cho người cao tuổi Việt Nam. Hệ thống kết hợp giữa giao diện người dùng thân thiện, độ tương phản cao, nút bấm lớn và nền tảng xử lý âm thanh thời gian thực dựa trên hệ sinh thái AI tiên tiến nhất của Google.
+# 🌿 AN NHIÊN (AnNien)
+### *Người Bạn Đồng Hành & Trợ Lý Đàm Thoại Thời Gian Thực Dành Riêng Cho Người Cao Tuổi*
 
----
+[![Google Gemini Live](https://img.shields.io/badge/Google_AI-Gemini_Multimodal_Live-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Tauri v2](https://img.shields.io/badge/Client-Tauri_v2_Mobile_%26_Desktop-24C8D8?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app/)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI_Gateway-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Google Cloud TTS](https://img.shields.io/badge/Speech-Google_Cloud_TTS-EA4335?style=for-the-badge&logo=googlecloud&logoColor=white)](https://cloud.google.com/text-to-speech)
+[![Vietnamese First](https://img.shields.io/badge/Language-Vietnamese_Optimized-FFB300?style=for-the-badge)](https://github.com)
 
-## 1. Kiến Trúc Hệ Thống (Architecture Overview)
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                   Ứng Dụng Client (Tauri v2 Mobile & Desktop)            │
-│  ┌───────────────────────────────┐   ┌────────────────────────────────┐  │
-│  │ Giao Diện Người Cao Tuổi (UI) │   │        Tầng Rust Core          │  │
-│  │ - Chữ to, độ tương phản cao   │   │ - Capture Mic: PCM 16kHz Mono  │  │
-│  │ - Nút bấm xúc giác lớn        │   │ - Playback:    PCM 24kHz Mono  │  │
-│  │ - Audio Orb tối giản          │   │ - Ngắt tức thì (Barge-In drain)│  │
-│  └───────────────▲───────────────┘   └───────────────▲────────────────┘  │
-└──────────────────┼───────────────────────────────────┼───────────────────┘
-                   │ WebSocket (PCM 16kHz in / 24kHz out)
-                   ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│          Backend Proxy Gateway (FastAPI / Google Cloud Run)              │
-│                 Khu vực triển khai: asia-southeast1                      │
-│                                                                          │
-│  ┌────────────────────────┐  ┌────────────────────────────────────────┐  │
-│  │ Session & Audio Relay  │  │ Deterministic Function Calling Tools   │  │
-│  │ - Quản lý kết nối WS   │  │ • remind_medication (Nhắc thuốc)       │  │
-│  │ - Điều phối Barge-in   │  │ • trigger_sos_alert (Kích hoạt SOS)    │  │
-│  │ - Bảo mật API Key      │  │ • record_mood       (Ghi nhận cảm xúc) │  │
-│  └───────────▲────────────┘  └───────────────────▲────────────────────┘  │
-└──────────────┼───────────────────────────────────┼───────────────────────┘
-               │                                   │
-               ▼                                   ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                   Hệ Sinh Thái Google AI Mới Nhất                        │
-│                                                                          │
-│  1. gemini-3.1-flash-live                                                │
-│     Gemini Multimodal Live API (BidiGenerateContent over WebSocket).     │
-│     Đàm thoại hai chiều thời gian thực, nhận biết cảm xúc, hỗ trợ        │
-│     Barge-in (người già nói ngắt lời AI tự nhiên).                       │
-│                                                                          │
-│  2. Google Cloud Text-to-Speech (TTS)                                    │
-│     Xử lý tác vụ tất định y tế & cảnh báo khẩn cấp: Đọc chính xác        │
-│     tên thuốc, liều lượng, hướng dẫn cấp cứu bằng giọng đọc tiếng Việt   │
-│     chuẩn (vi-VN-Wavenet/Neural2), loại bỏ hoàn toàn nguy cơ hallucinate.│
-│                                                                          │
-│  3. gemini-3.8-flash                                                     │
-│     Phân tích nhật ký, an sinh & trích xuất ký ức (Memory Extraction)    │
-│     từ các đoạn hội thoại thường nhật để theo dõi sức khỏe tâm thần.     │
-│                                                                          │
-│  4. text-embedding-005 + Cloud Firestore Vector Search                   │
-│     Vector hóa thông tin gia đình, kỷ niệm xưa và triệu chứng bệnh để    │
-│     tìm kiếm ngữ nghĩa (RAG), giúp AI thấu hiểu và gợi nhắc thân tình.   │
-└──────────────────────────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <b>Đàm thoại hai chiều siêu tốc</b> • 
+  <b>Barge-in ngắt lời tự nhiên</b> • 
+  <b>Nhắc thuốc y tế tất định</b> • 
+  <b>Cảnh báo khẩn cấp SOS</b> • 
+  <b>Giao diện tương phản cao trợ năng</b>
+</p>
 
 ---
 
-## 2. Cấu Trúc Thư Mục Dự Án
+</div>
 
-```
-d:\Project\AnNien\
-├── backend/                       # Backend Proxy Gateway (FastAPI)
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── live_client.py     # Gemini Multimodal Live API (gemini-3.1-flash-live)
-│   │   │   ├── session.py         # Quản lý phiên đàm thoại & điều phối Barge-in
-│   │   │   └── audio_relay.py     # Xử lý PCM 16kHz/24kHz, tính RMS & VAD
-│   │   ├── services/
-│   │   │   ├── tts_service.py     # Google Cloud TTS (Tác vụ y tế tất định & SOS)
-│   │   │   ├── memory_service.py  # gemini-3.8-flash (Trích xuất ký ức & nhật ký)
-│   │   │   └── rag_service.py     # text-embedding-005 + Firestore Vector Search
-│   │   ├── tools/
-│   │   │   ├── definitions.py     # Khai báo schema công cụ Gemini Live
-│   │   │   └── handlers.py        # remind_medication, trigger_sos_alert, record_mood
-│   │   ├── models/
-│   │   │   └── schemas.py         # Pydantic models
-│   │   ├── config.py              # Cấu hình Pydantic & Biến môi trường
-│   │   └── main.py                # FastAPI entrypoint, WebSocket /ws/live & REST APIs
-│   ├── tests/                     # Bộ kiểm thử tự động (pytest: 15/15 tests passing)
-│   ├── Dockerfile                 # Đóng gói container chuẩn Google Cloud Run
-│   └── requirements.txt           # Thư viện Python
-├── client/                        # Ứng dụng Client (Tauri v2 Mobile/Desktop)
-│   ├── src-tauri/                 # Tầng Rust Core
-│   │   ├── src/
-│   │   │   ├── audio/             # Capture 16kHz PCM (cpal) & Playback 24kHz (drain)
-│   │   │   ├── gateway/           # Rust WebSocket client kết nối Gateway
-│   │   │   ├── commands.rs        # Tauri IPC commands
-│   │   │   └── lib.rs             # Tauri application bootstrap
-│   │   ├── Cargo.toml
-│   │   └── tauri.conf.json        # Cấu hình Tauri v2 Desktop & Mobile
-│   ├── src/                       # Giao diện thân thiện người cao tuổi (React + TS + Tailwind)
-│   │   ├── components/
-│   │   │   ├── AudioOrb.tsx       # Sóng âm tối giản, phản hồi âm lượng & ngắt lời
-│   │   │   ├── BigButton.tsx      # Nút bấm xúc giác siêu lớn, độ tương phản cao
-│   │   │   ├── LiveTranscript.tsx # Phụ đề đàm thoại cỡ chữ to (24px-32px)
-│   │   │   ├── SosModal.tsx       # Màn hình SOS khẩn cấp có đếm ngược hủy bỏ
-│   │   │   ├── MedicationModal.tsx# Sổ tay nhắc thuốc rõ ràng, đánh dấu đã uống
-│   │   │   ├── MoodHistoryModal.tsx# Nhật ký an sinh & ký ức lưu trữ
-│   │   │   └── SettingsModal.tsx  # Cài đặt kết nối Gateway
-│   │   └── hooks/
-│   │       └── useLiveSession.ts  # Điều phối WebSocket & Web Audio fallback
-│   └── package.json
-└── scripts/
-    ├── deploy-cloudrun.sh         # Script deploy lên Cloud Run (asia-southeast1)
-    └── start-dev.ps1              # Script khởi chạy đồng thời backend + frontend
-```
+## 🌟 1. Bối Cảnh & Tầm Nhìn Dự Án
+
+Bước vào thời đại số, công nghệ phát triển như vũ bão nhưng phần lớn ứng dụng hiện đại lại vô tình tạo ra rào cản đối với thế hệ ông bà, cha mẹ:
+- **Thị lực & thính lực suy giảm**: Khó đọc những dòng chữ nhỏ, khó phân biệt các biểu tượng phức tạp.
+- **Rào cản thao tác chạm**: Bàn tay run, phản xạ chậm khiến việc gõ phím ảo hay điều hướng menu nhiều tầng trở nên căng thẳng.
+- **Sự cô đơn lúc tuổi già**: Con cháu bận rộn với công việc hoặc sống xa nhà, người cao tuổi thiếu đi người lắng nghe, chia sẻ tâm tư mỗi ngày.
+- **An toàn sức khỏe**: Nguy cơ quên lịch uống thuốc, nhầm lẫn liều lượng hay các tình huống té ngã, đau ốm bất chợt khi ở nhà một mình.
+
+> ### 💡 Sứ Mệnh Của An Nhiên
+> **An Nhiên** ra đời với sứ mệnh biến chiếc điện thoại thông minh trở thành **người cháu nhỏ hiếu thảo trong gia đình** — luôn túc trực bên cạnh các cụ 24/7, lắng nghe bằng cả tấm lòng, chuyện trò thân tình bằng giọng nói tiếng Việt tự nhiên và chăm lo chu đáo cho từng cữ thuốc, giấc ngủ của ông bà.
 
 ---
 
-## 3. Hướng Dẫn Cài Đặt & Chạy Môi Trường Phát Triển (Local Dev)
+## 👵 2. Trải Nghiệm Thiết Kế Dành Riêng Cho Người Cao Tuổi
 
-### Bước 1: Khởi động Backend Proxy Gateway
-```powershell
-cd d:\Project\AnNien\backend
-# Cài đặt thư viện:
-pip install -r requirements.txt
+Mọi chi tiết trong An Nhiên đều được tinh chỉnh dựa trên tiêu chuẩn trợ năng quốc tế (**WCAG AAA**) và tâm lý học tiếp nhận của người lớn tuổi:
 
-# Tạo file .env từ mẫu:
-copy .env.example .env
-# Điền GEMINI_API_KEY vào .env
+| Yếu Tố Thiết Kế | Trải Nghiệm Trên An Nhiên |
+| :--- | :--- |
+| **🔤 Kiểu Chữ & Kích Thước** | Hệ thống chữ siêu lớn (*24px – 36px*), nét đậm, phông chữ không chân rõ ràng, dễ đọc ngay cả khi không đeo kính lão. |
+| **🎨 Tương Phản & Màu Sắc** | Tông màu be dịu mắt (*Stone / Sand*) kết hợp xanh ngọc bích (*Teal*) và điểm nhấn cứu hộ đỏ cam (*Amber / Rose*), độ tương phản cao giúp chống mỏi mắt. |
+| **🔘 Nút Bấm Xúc Giác Lớn** | Các nút bấm vật lý ảo có kích thước cực đại, phản hồi trạng thái rõ ràng, hỗ trợ chạm dễ dàng mà không sợ trượt tay. |
+| **🔮 Quả Cầu Âm Thanh (Audio Orb)** | Hiệu ứng thị giác trực quan chuyển động theo nhịp thở và biên độ giọng nói, giúp cụ biết rõ khi nào trợ lý đang lắng nghe hoặc đang trả lời. |
+| **🚫 Tối Giản Tuyệt Đối** | Không quảng cáo, không banner gây rối, không menu phụ ẩn giấu — mở ứng dụng là có thể bắt đầu trò chuyện ngay lập tức. |
 
-# Chạy máy chủ:
-uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+---
+
+## ✨ 3. Hệ Tính Năng Cốt Lõi
+
 ```
-- Kiểm tra trạng thái máy chủ: `http://localhost:8080/health`
-- WebSocket endpoint: `ws://localhost:8080/ws/live`
-
-### Bước 2: Khởi động Client
-```powershell
-cd d:\Project\AnNien\client
-pnpm install
-
-# Chạy giao diện Web:
-pnpm run dev
-
-# Hoặc khởi chạy ứng dụng Desktop native (Tauri v2):
-pnpm run tauri dev
+                           ┌─────────────────────────────────────────┐
+                           │            AN NHIÊN ECOSYSTEM           │
+                           └────────────────────┬────────────────────┘
+                                                │
+         ┌──────────────────────┬───────────────┴──────────────┬──────────────────────┐
+         ▼                      ▼                              ▼                      ▼
+┌──────────────────┐  ┌──────────────────┐           ┌──────────────────┐  ┌──────────────────┐
+│  ĐÀM THOẠI LIVE  │  │  NHẮC THUỐC ĐỊNH  │           │   CẢNH BÁO SOS   │  │ TRÍCH XUẤT KÝ ỨC │
+│  Hai chiều < 1s  │  │  TTS chuẩn y khoa │           │   Cấp cứu 1-chạm │  │  Nhật ký an sinh │
+│  Barge-in tự do  │  │  Không ảo giác    │           │   Bảo vệ 24/7    │  │  Thấu hiểu cụ   │
+└──────────────────┘  └──────────────────┘           └──────────────────┘  └──────────────────┘
 ```
 
-### Chạy nhanh bằng Script:
-```powershell
-.\scripts\start-dev.ps1
+### 🎙️ 1. Đàm Thoại Trực Tiếp Thời Gian Thực (Real-time Conversational Voice)
+- **Tốc độ phản hồi cực nhanh**: Nhờ sức mạnh của **Gemini Multimodal Live API**, cuộc trò chuyện diễn ra tự nhiên với độ trễ phản hồi dưới 1 giây, hệt như đang nói chuyện trực tiếp cùng người thân.
+- **Barge-In tự nhiên (Ngắt lời tức thì)**: Khi AI đang phát âm thanh, nếu cụ cất tiếng ngắt lời ("Khoan đã cháu", "Để bác nói nốt"), hệ thống lập tức ngắt tiếng của AI và chuyển sang chế độ chú ý lắng nghe, không bắt cụ phải đợi AI nói hết câu.
+- **Xưng hô thân mật, chuẩn mực văn hóa**: AI tự động thích ứng với vai vế được gia đình thiết lập (gọi là *Bác An*, *Cụ An*, xưng là *Cháu Út*, *An Nhiên*), thấu hiểu phương ngữ và cách nói chuyện chậm rãi, tình cảm của người già.
+
+---
+
+### 💊 2. Quản Lý & Nhắc Nhở Uống Thuốc Tất Định (Deterministic Medical Safety)
+- **Cơ chế lai (Hybrid Architecture) loại bỏ Hallucination**:
+  - Gemini Live xử lý giao tiếp tự nhiên và xác định thời điểm uống thuốc.
+  - **Google Cloud Text-to-Speech (Neural2 / Wavenet)** chịu trách nhiệm phát âm chính xác tuyệt đối tên thuốc, liều lượng (ví dụ: *Amlodipine 5mg, uống 1 viên sau ăn sáng*) bằng giọng đọc chuẩn y tế, ngăn ngừa triệt để tình trạng AI suy diễn sai lệch đơn thuốc.
+- **Sổ tay nhắc thuốc to bản**: Màn hình hiển thị danh sách thuốc trong ngày rõ ràng, cho phép cụ đánh dấu *"Đã uống"* bằng giọng nói hoặc thao tác một chạm.
+
+---
+
+### 🚨 3. Kích Hoạt Cảnh Báo Khẩn Cấp SOS Một Chạm
+- **Nhận diện giọng nói khẩn cấp**: Cụ chỉ cần nói những câu như *"Cứu bác với"*, *"Tôi bị chóng mặt quá"*, *"Cháu ơi bác bị ngã"* — trợ lý sẽ lập tức nhận diện nguy cấp và kích hoạt quy trình SOS.
+- **Nút bấm SOS độc lập**: Phím bấm khẩn cấp màu đỏ nổi bật luôn thường trực trên màn hình chính.
+- **Cơ chế an toàn có thời gian đếm ngược**: Hạn chế báo động giả khi bấm nhầm, đồng thời tự động phát thanh hướng dẫn cụ ngồi yên giữ bình tĩnh và chuyển thông báo tức thì đến điện thoại con cháu.
+
+---
+
+### 🧠 4. Trích Xuất Ký Ức & Nhật Ký An Sinh (Memory & Well-being)
+- **Thấu hiểu tâm sự**: Tự động nhận diện cảm xúc (vui vẻ, phấn khởi, buồn bã, lo âu, mệt mỏi) qua từng phiên trò chuyện để lập biểu đồ an sinh tinh thần.
+- **Kho kỷ niệm gia đình**: Trích xuất những hồi ức thời trẻ, kỷ niệm quê hương, sở thích ăn uống hay thói quen sinh hoạt để làm phong phú ngữ cảnh đàm thoại, giúp trợ lý càng trò chuyện lâu càng trở nên thân thiết, gắn bó.
+
+---
+
+### 👨‍👩‍👧‍👦 5. Cổng Quản Trị Gia Đình Đa Nền Tảng (Caregiver Portal)
+Hệ sinh thái An Nhiên vận hành theo mô hình **2 trong 1**:
+- **Dành cho Người Cao Tuổi**: Ứng dụng Android APK chuyên dụng, tối ưu hóa cho màn hình điện thoại hoặc máy tính bảng đặt ở phòng khách/đầu giường.
+- **Dành cho Con Cháu (Caregiver Dashboard)**: Cổng Web quản trị truy cập linh hoạt từ trình duyệt:
+  - Thiết lập hồ sơ sức khỏe và giờ uống thuốc của cụ.
+  - Theo dõi nhật ký trò chuyện, các cảnh báo SOS và biến động tâm trạng hàng tuần.
+  - Tải nhanh bản cài đặt APK mới nhất cho điện thoại của cha mẹ.
+
+---
+
+## 🏗️ 4. Kiến Trúc Hệ Thống Tổng Thể
+
+```mermaid
+graph TD
+    subgraph Client["📱 ỨNG DỤNG CLIENT (Tauri v2 Mobile & Desktop)"]
+        UI["🎨 Giao Diện Thân Thiện Người Cao Tuổi<br/>(Chữ to, Nút lớn, Audio Orb, WCAG AAA)"]
+        AudioCore["⚙️ Tầng Rust Native Audio<br/>(Capture PCM 16kHz & Playback 24kHz Drain)"]
+        UI <--> AudioCore
+    end
+
+    subgraph Gateway["☁️ BACKEND PROXY GATEWAY (FastAPI / Cloud Run)"]
+        SessionMgr["🔄 Session Manager & Audio Relay<br/>(Barge-in Coordinator & Token Security)"]
+        Tools["🛠️ Deterministic Tools Execution<br/>• Medication Scheduler<br/>• SOS Emergency Dispatcher<br/>• Mood & Memory Pipeline"]
+        SessionMgr <--> Tools
+    end
+
+    subgraph GoogleAI["✨ HỆ SINH THÁI GOOGLE AI"]
+        LiveAPI["⚡ Gemini Multimodal Live API<br/>(BidiGenerateContent over WebSocket)"]
+        CloudTTS["🔊 Google Cloud TTS<br/>(Tất định y tế & cảnh báo phát thanh)"]
+        GeminiFlash["🧠 Gemini Flash<br/>(Trích xuất ký ức & phân tích nhật ký)"]
+        VectorDB["📚 text-embedding-005 + Firestore<br/>(Tìm kiếm ngữ nghĩa & RAG ký ức)"]
+    end
+
+    AudioCore == "WebSocket (PCM 16kHz in / 24kHz out)" ==> SessionMgr
+    SessionMgr <== "Bi-directional Live Stream" ==> LiveAPI
+    Tools --> CloudTTS
+    Tools --> GeminiFlash
+    Tools --> VectorDB
 ```
 
 ---
 
-## 4. Chạy Kiểm Thử (Verification)
-Bộ kiểm thử tích hợp và unit test cho backend bao phủ 100% các chức năng cốt lõi:
-```powershell
-cd d:\Project\AnNien\backend
-pytest -v
-```
-Kết quả kiểm thử:
-- ✅ `test_audio_relay_calculations` & `test_audio_relay_wav_wrapping` (PCM 16k/24k)
-- ✅ `test_websocket_live_endpoint_lifecycle` (Bidi WebSocket, ping/pong, barge-in)
-- ✅ `test_health_check_cloud_run` (Liveness & readiness probe)
-- ✅ `test_remind_medication_tool` (Function Calling: Nhắc thuốc)
-- ✅ `test_trigger_sos_alert_tool` (Function Calling: Kích hoạt SOS & Google Cloud TTS)
-- ✅ `test_record_mood_tool` (Function Calling: Ghi nhận cảm xúc)
-- ✅ `test_tts_service_deterministic` (Google Cloud TTS tất định y tế)
-- ✅ `test_rag_service_store_and_search` (text-embedding-005 + Semantic Search)
-- ✅ `test_memory_service_extraction` (Gemini 3.8 Flash trích xuất ký ức)
+## 💻 5. Bảng Công Nghệ Chủ Đạo
+
+| Thành Phần | Công Nghệ Sử Dụng | Vai Trò & Điểm Nổi Bật |
+| :--- | :--- | :--- |
+| **Trò chuyện Trực tiếp** | `Gemini Multimodal Live API` | Đàm thoại hai chiều thời gian thực với độ trễ cực thấp, nhận thức giọng nói và cảm xúc tự nhiên. |
+| **Xử lý Tác vụ Y tế** | `Google Cloud Text-to-Speech` | Giọng đọc chuẩn tiếng Việt (*Wavenet/Neural2*) cho các thông tin thuốc và cảnh báo khẩn cấp, loại bỏ sai lệch y khoa. |
+| **Trích xuất Tri thức** | `Gemini Flash & Embeddings` | Khai phá ký ức hồi tưởng và phân tích nhật ký an sinh của người cao tuổi sau mỗi phiên trò chuyện. |
+| **Ứng dụng Phía Cụ** | `Tauri v2 (Rust + React + TS)` | Tối ưu hóa hiệu năng native, dung lượng file cài đặt siêu nhẹ (~40MB), chạy mượt mà trên các dòng máy Android phổ thông. |
+| **Cổng Điều Phối** | `FastAPI (Python) + WebSockets` | Quản lý phiên đàm thoại tập trung, giữ an toàn tuyệt đối cho API Key và điều phối luồng âm thanh hai chiều. |
+| **Hạ Tầng Điện Toán** | `Google Cloud Run` | Triển khai tại trung tâm dữ liệu Đông Nam Á (`asia-southeast1`), hỗ trợ WebSocket duy trì liên tục và tự động co giãn. |
 
 ---
 
-## 5. Triển Khai Lên Google Cloud Run (Region asia-southeast1)
+## 💖 6. Giá Trị Xã Hội & Ý Nghĩa Nhân Văn
 
-Backend Proxy Gateway được thiết kế tương thích hoàn toàn với Google Cloud Run:
-- Hỗ trợ timeout WebSocket dài (`--timeout 3600`) cho phiên đàm thoại liên tục.
-- Bật tính năng `--session-affinity` để duy trì kết nối WebSocket ổn định.
-- Triển khai tại khu vực Đông Nam Á (`asia-southeast1` - Singapore) để giảm thiểu độ trễ đàm thoại cho người dùng tại Việt Nam.
+An Nhiên không chỉ đơn thuần là một sản phẩm công nghệ; đó là chiếc cầu nối tình thân giữa các thế hệ trong gia đình Việt:
+- **Giảm bớt sự cô đơn**: Mang lại tiếng cười và sự an ủi tinh thần cho những cụ già neo đơn hoặc phải ở nhà một mình cả ngày.
+- **An tâm cho con cháu**: Giúp những người con, người cháu đang bận rộn công tác phương xa có thể yên tâm rằng cha mẹ luôn có một người bạn đồng hành tận tụy và an toàn sức khỏe luôn được trông nom cẩn thận.
+- **Thu hẹp khoảng cách số**: Đưa những tiến bộ trí tuệ nhân tạo hiện đại nhất phục vụ trực tiếp cho nhóm người dễ bị tổn thương nhất trong xã hội theo cách giản dị, dễ gần nhất.
 
-Lệnh deploy tự động:
-```bash
-chmod +x scripts/deploy-cloudrun.sh
-./scripts/deploy-cloudrun.sh
-```
-Hoặc qua `gcloud`:
-```bash
-gcloud run deploy annien-backend-gateway \
-    --source ./backend \
-    --region asia-southeast1 \
-    --allow-unauthenticated \
-    --timeout 3600 \
-    --concurrency 80 \
-    --cpu 2 \
-    --memory 2Gi \
-    --session-affinity
-```
+---
+
+<div align="center">
+
+**An Nhiên — Ấm áp từng cuộc trò chuyện, an lòng mỗi phút giây tuổi già.**  
+*Một dự án công nghệ phụng sự cộng đồng và gia đình Việt Nam.*
+
+</div>

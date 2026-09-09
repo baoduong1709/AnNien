@@ -124,13 +124,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="ws://192.168.1.3:8080/ws/live"
+              placeholder="wss://annien.baoduong.dev/ws/live"
               className="w-full px-3.5 py-2.5 rounded-xl border-2 border-stone-300 text-xs sm:text-sm font-mono text-stone-800 focus:outline-none focus:border-teal-600 break-all"
             />
             <p className="text-[11px] text-stone-500 leading-relaxed">
-              Mặc định khi chạy local: <code className="bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">ws://192.168.1.3:8080/ws/live</code>
+              Mặc định máy chủ: <code className="bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">wss://annien.baoduong.dev/ws/live</code>
               <br />
-              Hoặc Cloud Run: <code className="bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">wss://annien-gateway-xxx-as.a.run.app/ws/live</code>
+              Hoặc khi chạy máy bàn nội bộ: <code className="bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">ws://192.168.1.3:8080/ws/live</code>
             </p>
           </div>
         </div>
