@@ -38,7 +38,7 @@ gcloud run deploy "${SERVICE_NAME}" \
     --cpu 2 \
     --memory 2Gi \
     --session-affinity \
-    --set-env-vars "GCP_LOCATION=${REGION},GEMINI_LIVE_MODEL=gemini-3.1-flash-live,GEMINI_FLASH_MODEL=gemini-3.8-flash,EMBEDDING_MODEL=text-embedding-005"
+    --set-env-vars "GCP_LOCATION=${REGION},GEMINI_LIVE_MODEL=gemini-3.1-flash-live-preview,GEMINI_FLASH_MODEL=gemini-2.0-flash,EMBEDDING_MODEL=text-embedding-005"
 
 # Step 4: Display service URL
 SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" --platform managed --region "${REGION}" --format 'value(status.url)')

@@ -19,16 +19,17 @@ export const BigButton: React.FC<BigButtonProps> = ({
   disabled = false,
   className = "",
 }) => {
-  let styleClasses = "bg-teal-700 text-white border-teal-900 active:bg-teal-800";
+  let styleClasses = "bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-800 shadow-teal-700/30 active:from-teal-600 active:to-teal-800";
 
   if (variant === "crimson") {
-    // SOS emergency button
-    styleClasses = "bg-red-600 text-white border-red-800 active:bg-red-700 shadow-xl shadow-red-600/30";
+    // SOS emergency button - high alert styling
+    styleClasses = "bg-gradient-to-br from-red-500 to-red-700 text-white border-red-800 shadow-red-600/40 active:from-red-600 active:to-red-800 animate-glow-pulse";
   } else if (variant === "amber") {
     // Medication reminder button
-    styleClasses = "bg-amber-600 text-white border-amber-800 active:bg-amber-700";
+    styleClasses = "bg-gradient-to-br from-amber-400 to-amber-600 text-white border-amber-700 shadow-amber-500/30 active:from-amber-500 active:to-amber-700";
   } else if (variant === "neutral") {
-    styleClasses = "bg-stone-100 text-stone-900 border-stone-300 active:bg-stone-200";
+    // Regular buttons with a soft gradient
+    styleClasses = "bg-gradient-to-br from-stone-50 to-stone-200 text-stone-800 border-stone-300 shadow-stone-300/30 active:from-stone-100 active:to-stone-300";
   }
 
   const handleClick = () => {
@@ -43,13 +44,21 @@ export const BigButton: React.FC<BigButtonProps> = ({
     <button
       onClick={handleClick}
       disabled={disabled}
-      className={`big-tap-target w-full flex items-center justify-start sm:justify-center gap-2.5 sm:gap-4 px-3.5 py-3 sm:px-6 sm:py-4 border-2 sm:border-4 rounded-2xl sm:rounded-3xl transition-transform transform active:scale-95 cursor-pointer shadow-md overflow-hidden ${styleClasses} ${className}`}
+      className={`big-tap-target w-full h-full min-h-[96px] flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 sm:p-5 border-b-[6px] border-r-[2px] border-l-[2px] border-t-[2px] rounded-2xl sm:rounded-[2rem] transition-all duration-150 transform active:scale-[0.98] active:border-b-[2px] active:translate-y-[4px] cursor-pointer shadow-lg overflow-hidden relative ${styleClasses} ${className}`}
     >
-      {icon && <div className="shrink-0 [&>svg]:w-6 [&>svg]:h-6 sm:[&>svg]:w-8 sm:[&>svg]:h-8">{icon}</div>}
-      <div className="flex flex-col text-left min-w-0 flex-1">
-        <span className="font-black text-xs sm:text-base md:text-elder-lg leading-tight">{label}</span>
+      {/* Glassy reflection top */}
+      <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-t-2xl sm:rounded-t-[2rem]" />
+      
+      {icon && (
+        <div className="shrink-0 [&>svg]:w-8 [&>svg]:h-8 sm:[&>svg]:w-10 sm:[&>svg]:h-10 drop-shadow-md z-10">
+          {icon}
+        </div>
+      )}
+      
+      <div className="flex flex-col text-center min-w-0 w-full z-10">
+        <span className="font-black text-elder-base sm:text-elder-lg leading-tight tracking-tight drop-shadow-sm">{label}</span>
         {subLabel && (
-          <span className="text-[10px] sm:text-xs md:text-sm font-normal opacity-90 truncate mt-0.5">{subLabel}</span>
+          <span className="text-elder-sm font-bold opacity-90 truncate mt-1">{subLabel}</span>
         )}
       </div>
     </button>

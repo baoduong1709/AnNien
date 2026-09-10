@@ -57,3 +57,29 @@
 .animate-ripple {
   animation: ripple-wave 1.8s ease-out infinite;
 }
+
+/* New custom animations for Orb and glowing effects */
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.6)); }
+  50% { filter: drop-shadow(0 0 35px rgba(255, 255, 255, 0.9)); }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s infinite ease-in-out;
+}
+
+.bg-radial-listening {
+  background: radial-gradient(circle, #34d399 0%, #059669 100%);
+}
+
+.bg-radial-speaking {
+  background: radial-gradient(circle, #60a5fa 0%, #2563eb 100%);
+}
+
+.bg-radial-thinking {
+  background: radial-gradient(circle, #fbbf24 0%, #d97706 100%);
+}
+
+.bg-radial-idle {
+  background: radial-gradient(circle, #e7e5e4 0%, #a8a29e 100%);
+}

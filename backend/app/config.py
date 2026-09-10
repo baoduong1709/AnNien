@@ -18,10 +18,10 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     # AI Models (Google latest models per requirements)
-    # Gemini Multimodal Live API model
-    GEMINI_LIVE_MODEL: str = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.1-flash-live")
-    # Fallback live model if preview requires gemini-2.0-flash-exp
-    GEMINI_LIVE_MODEL_FALLBACK: str = os.getenv("GEMINI_LIVE_MODEL_FALLBACK", "gemini-2.0-flash-exp")
+    # Gemini Multimodal Live API model (BidiGenerateContent)
+    GEMINI_LIVE_MODEL: str = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.1-flash-live-preview")
+    # Fallback live model
+    GEMINI_LIVE_MODEL_FALLBACK: str = os.getenv("GEMINI_LIVE_MODEL_FALLBACK", "gemini-2.5-flash-native-audio-preview-12-2025")
     # Memory extraction & diary analysis model (Optimal balance of intelligence and cost)
     GEMINI_FLASH_MODEL: str = os.getenv("GEMINI_FLASH_MODEL", "gemini-2.0-flash")
     # Semantic search embedding model

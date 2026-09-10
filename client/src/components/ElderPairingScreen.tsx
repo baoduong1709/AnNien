@@ -190,8 +190,11 @@ export function ElderPairingScreen({ gatewayHttpUrl, onUpdateGatewayUrl, onPaire
   };
 
   return (
-    <div className="min-h-screen bg-annien-bg flex flex-col items-center justify-center p-3 sm:p-6 selection:bg-teal-200 pt-safe pb-safe overflow-y-auto">
-      <div className="w-full max-w-lg bg-white rounded-3xl sm:rounded-[2.5rem] border-2 sm:border-4 border-stone-200 shadow-2xl p-5 sm:p-8 space-y-4 sm:space-y-6 text-center my-auto animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-teal-50 to-stone-100 flex flex-col items-center justify-center p-3 sm:p-6 selection:bg-teal-200 pt-safe pb-safe overflow-y-auto">
+      <div className="w-full max-w-lg bg-white/90 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] border border-white/50 shadow-2xl p-5 sm:p-8 space-y-4 sm:space-y-6 text-center my-auto animate-fade-in relative overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute -top-32 -right-32 w-64 h-64 bg-teal-200/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-emerald-200/40 rounded-full blur-3xl pointer-events-none" />
         {/* Animated App Icon */}
         <div className="relative mx-auto w-16 h-16 sm:w-20 sm:h-20">
           <div className="absolute inset-0 rounded-3xl bg-teal-500/20 animate-ping opacity-75" />

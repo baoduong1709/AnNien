@@ -57,23 +57,60 @@ class GeminiLiveClient:
             f"google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key={self.api_key}"
         )
 
-        try:
-            self.ws = await websockets.connect(
-                endpoint,
-                ping_interval=20,
-                ping_timeout=20,
-                max_size=10 * 1024 * 1024
-            )
-            self.is_connected = True
-            logger.info(f"Connected to Gemini Multimodal Live API with model: {self.model}")
+        # Try primary model, then fallback
+        models_to_try = [self.model, settings.GEMINI_LIVE_MODEL_FALLBACK]
+        for i, model_name in enumerate(models_to_try):
+            try:
+                self.model = model_name
+                self.ws = await websockets.connect(
+                    endpoint,
+                    ping_interval=20,
+                    ping_timeout=20,
+                    max_size=10 * 1024 * 1024
+                )
+                self.is_connected = True
+                logger.info(f"Connected to Gemini Multimodal Live API with model: {self.model}")
 
-            # Send Setup Handshake
-            await self._send_setup_handshake()
+                # Send Setup Handshake and wait for setupComplete
+                await self._send_setup_handshake()
 
-        except Exception as e:
-            logger.warning(f"Failed to connect to Gemini Live endpoint ({e}). Falling back to simulation mode.")
-            self.is_mock_mode = True
-            self.is_connected = True
+                # Wait for setupComplete confirmation (with timeout)
+                try:
+                    raw_resp = await asyncio.wait_for(self.ws.recv(), timeout=10)
+                    resp = json.loads(raw_resp)
+                    if "setupComplete" in resp:
+                        logger.info(f"Gemini Live setup completed successfully with model: {self.model}")
+                        self._setup_complete = True
+                        return  # Success!
+                    else:
+                        logger.warning(f"Unexpected first message from Gemini (model {self.model}): {str(resp)[:200]}")
+                        # Still might work, continue
+                        return
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout waiting for setupComplete from model {self.model}")
+                    if i < len(models_to_try) - 1:
+                        await self.ws.close()
+                        self.ws = None
+                        continue  # Try fallback model
+                    # Last model also timed out, proceed anyway
+                    return
+
+            except Exception as e:
+                logger.warning(f"Failed to connect with model {model_name}: {e}")
+                if self.ws:
+                    try:
+                        await self.ws.close()
+                    except:
+                        pass
+                    self.ws = None
+                if i < len(models_to_try) - 1:
+                    logger.info(f"Trying fallback model: {models_to_try[i+1]}")
+                    continue
+
+        # All models failed, fall back to simulation
+        logger.warning("All Gemini Live models failed. Falling back to simulation mode.")
+        self.is_mock_mode = True
+        self.is_connected = True
 
     async def _send_setup_handshake(self):
         """Sends the initial setup configuration including tools and system instructions."""
@@ -237,8 +274,22 @@ class GeminiLiveClient:
 
         except websockets.ConnectionClosed as e:
             logger.info(f"Gemini Live WebSocket connection closed: {e}")
+            if self._on_message_callback:
+                self._on_message_callback({
+                    "type": "transcript",
+                    "role": "system",
+                    "text": f"Kết nối tới AI bị gián đoạn. Vui lòng bấm nút Trò Chuyện để kết nối lại.",
+                    "is_final": True
+                })
         except Exception as e:
             logger.error(f"Error in Gemini Live listen loop: {e}")
+            if self._on_message_callback:
+                self._on_message_callback({
+                    "type": "transcript",
+                    "role": "system",
+                    "text": f"Lỗi kết nối AI: {str(e)[:100]}. Vui lòng thử lại.",
+                    "is_final": True
+                })
         finally:
             self.is_connected = False
 

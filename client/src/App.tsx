@@ -256,72 +256,68 @@ export function App() {
   return (
     <div className="h-[100dvh] max-h-[100dvh] flex flex-col justify-between bg-annien-bg px-3 pt-2 pb-5 sm:px-6 sm:py-4 max-w-4xl mx-auto selection:bg-teal-200 overflow-hidden pt-safe pb-safe">
       {/* Top Header: Clock, Status & Settings */}
-      <header className="flex items-center justify-between p-3 sm:p-4 bg-white/90 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-stone-200 shadow-sm shrink-0">
+      <header className="flex items-center justify-between p-3 sm:p-5 bg-gradient-to-r from-white/90 to-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/50 shadow-sm shrink-0">
         <div className="min-w-0 flex-1">
-          <div className="text-sm sm:text-base md:text-elder-lg font-black text-stone-900 tracking-tight truncate">
+          <div className="text-elder-base sm:text-elder-lg font-black text-stone-800 tracking-tight truncate drop-shadow-sm">
             {currentTime || `Trợ lý ${effectiveAiName}`}
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-            <span className="relative flex h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 mt-1">
+            <span className="relative flex h-3 w-3 sm:h-4 sm:w-4 shrink-0">
               <span
                 className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                   status !== "idle" ? "bg-emerald-400" : isStandby ? "bg-amber-400" : "bg-stone-300"
                 }`}
               />
               <span
-                className={`relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 ${
-                  status !== "idle" ? "bg-emerald-600" : isStandby ? "bg-amber-500" : "bg-stone-400"
+                className={`relative inline-flex rounded-full h-3 w-3 sm:h-4 sm:w-4 ${
+                  status !== "idle" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : isStandby ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" : "bg-stone-400"
                 }`}
               />
             </span>
-            <span className="text-xs sm:text-elder-sm font-bold text-stone-700 truncate">
+            <span className="text-elder-sm sm:text-elder-base font-bold text-stone-600 truncate">
               {status !== "idle"
                 ? `Đang trò chuyện cùng ${elderName}`
                 : isStandby
-                ? "Đang nghỉ ngơi (Gọi 'Cháu ơi' để thức dậy)"
+                ? "Đang nghỉ ngơi (Gọi 'Cháu ơi')"
                 : "Sẵn sàng lắng nghe"}
-            </span>
-            <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-extrabold shrink-0 hidden xs:inline">
-              TK: {username || adminPhone || pairingCode}
             </span>
           </div>
         </div>
 
-        {/* Cài đặt cấu hình (dành cho người nhà / kỹ thuật viên thiết lập máy cụ) */}
-        <div className="flex items-center gap-2 ml-2 shrink-0">
+        {/* Cài đặt cấu hình */}
+        <div className="flex items-center gap-2 ml-3 shrink-0">
           <button
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Cài đặt kết nối"
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-stone-100 border border-stone-300 flex items-center justify-center text-stone-700 hover:bg-stone-200 active:scale-95 transition-all"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.25rem] bg-stone-50/80 border border-stone-200/60 shadow-sm flex items-center justify-center text-stone-600 hover:bg-white hover:text-stone-900 active:scale-95 transition-all backdrop-blur-sm"
           >
-            <SettingsIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+            <SettingsIcon className="w-6 h-6 sm:w-7 sm:h-7" />
           </button>
         </div>
       </header>
 
       {/* Voice Control Wake-Word Banner */}
-      <div className="my-1.5 sm:my-2.5 bg-gradient-to-r from-teal-700 to-emerald-700 text-white px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm flex items-center justify-between gap-2 text-xs sm:text-sm font-bold shrink-0">
-        <div className="flex items-center gap-2 truncate">
-          <Sparkles className="w-4 h-4 text-amber-300 shrink-0 animate-spin" style={{ animationDuration: "6s" }} />
-          <span className="truncate">
-            Khẩu lệnh: Gọi <span className="underline decoration-amber-300 text-amber-200 font-black">"Cháu ơi"</span> hoặc <span className="underline decoration-amber-300 text-amber-200 font-black">"{effectiveAiName} ơi"</span>
+      <div className="my-2 sm:my-3 bg-gradient-to-r from-teal-700 to-emerald-600 text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg shadow-teal-700/20 flex items-center justify-between gap-2 text-elder-sm sm:text-elder-base font-black shrink-0 relative overflow-hidden">
+        {/* Subtle inner glow / decorative shine */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-2.5 truncate relative z-10">
+          <Sparkles className="w-6 h-6 text-amber-300 shrink-0 animate-spin drop-shadow-sm" style={{ animationDuration: "6s" }} />
+          <span className="truncate drop-shadow-md">
+            Khẩu lệnh: Gọi <span className="text-amber-200 font-black">"Cháu ơi"</span> hoặc <span className="text-amber-200 font-black">"{effectiveAiName} ơi"</span>
           </span>
         </div>
-        <span className="text-[10px] bg-white/20 px-2.5 py-0.5 rounded-full text-white font-black shrink-0 hidden sm:inline">
-          100% Giọng Nói
-        </span>
       </div>
 
       {/* Standby Message Notice */}
       {isStandby && (
-        <div className="mb-1 p-2.5 bg-amber-50 border border-amber-300 rounded-xl sm:rounded-2xl text-amber-900 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm animate-fade-in text-center shrink-0">
-          <span className="text-lg">💤</span>
+        <div className="mb-2 p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/60 rounded-2xl sm:rounded-3xl text-amber-900 font-bold text-elder-sm sm:text-elder-base flex items-center justify-center gap-2 shadow-sm animate-fade-in text-center shrink-0">
+          <span className="text-2xl drop-shadow-sm">💤</span>
           <span>{standbyMessage || `Cháu đang nghỉ ngơi. Cụ chỉ cần gọi "Cháu ơi" là cháu có mặt ngay ạ!`}</span>
         </div>
       )}
 
       {/* Center Stage: Minimalist Soundwave Orb & Subtitles */}
-      <main className="flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 space-y-2 sm:space-y-3 overflow-y-auto">
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 space-y-3 sm:space-y-4 overflow-y-auto">
         <AudioOrb
           state={status}
           volumeLevel={volumeLevel}
@@ -336,7 +332,7 @@ export function App() {
       </main>
 
       {/* Bottom Bar: 4 Big Tactile Elder Buttons */}
-      <footer className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 shrink-0 pt-1">
+      <footer className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 shrink-0 pt-2">
         {/* Button 1: Conversation Toggle */}
         <BigButton
           label={status === "idle" ? "Trò Chuyện" : "Nghỉ Ngơi"}

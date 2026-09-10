@@ -468,39 +468,41 @@ export function CaregiverDashboard({ gatewayHttpUrl }: CaregiverDashboardProps) 
 
   if (!currentFamily) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 selection:bg-teal-200">
-        <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-6 sm:p-8 space-y-6 border border-slate-200">
-          <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
-              <HeartPulse className="w-8 h-8" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4 selection:bg-teal-200">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.1)] max-w-md w-full p-6 sm:p-8 space-y-6 border border-white/60 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-teal-200 rounded-full blur-3xl opacity-30 -mr-20 -mt-20 pointer-events-none"></div>
+          
+          <div className="text-center space-y-3 relative z-10">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center mx-auto shadow-lg border-[3px] border-teal-100">
+              <HeartPulse className="w-8 h-8 drop-shadow-md" />
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">An Nhiên Caregiver</h1>
-            <p className="text-xs text-slate-500">
-              Đăng nhập tài khoản gia đình để theo dõi sức khỏe & ký ức người thân
+            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-br from-slate-800 to-slate-900 tracking-tight">An Nhiên Caregiver</h1>
+            <p className="text-sm font-bold text-slate-500">
+              Theo dõi sức khỏe & ký ức người thân
             </p>
           </div>
 
           {loginError && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div className="p-4 bg-red-50/80 backdrop-blur-sm border-2 border-red-200 text-red-700 text-sm font-bold rounded-2xl flex items-center gap-2 shadow-sm relative z-10">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
               <span>{loginError}</span>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5 relative z-10">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Mã Kết Nối (ANN-xxxx) hoặc Số Điện Thoại Quản Trị
+              <label className="block text-sm font-black text-slate-700 mb-2">
+                Mã Kết Nối (ANN-xxxx) hoặc SĐT Quản Trị
               </label>
               <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <KeyRound className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
                 <input
                   type="text"
                   required
                   placeholder="Ví dụ: ANN-8866 hoặc 0912345678"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
+                  className="w-full pl-12 pr-4 py-3.5 rounded-2xl border-[3px] border-slate-200/60 bg-white/70 backdrop-blur-sm text-base focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 font-bold text-slate-800 transition-all shadow-inner"
                 />
               </div>
             </div>
@@ -508,35 +510,36 @@ export function CaregiverDashboard({ gatewayHttpUrl }: CaregiverDashboardProps) 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-gradient-to-br from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white font-black rounded-2xl text-base transition-all shadow-[0_8px_20px_rgba(20,184,166,0.3)] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 border-2 border-teal-800 relative overflow-hidden group"
             >
-              <LogIn className="w-4 h-4" />
-              <span>{isLoggingIn ? "Đang xác thực..." : "Đăng Nhập"}</span>
+              <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
+              <LogIn className="w-5 h-5 drop-shadow-sm group-hover:translate-x-1 transition-transform" />
+              <span className="drop-shadow-sm">{isLoggingIn ? "Đang xác thực..." : "Đăng Nhập"}</span>
             </button>
           </form>
 
-          <div className="relative flex items-center justify-center">
-            <div className="border-t border-slate-200 w-full" />
-            <span className="bg-white px-3 text-xs text-slate-400 font-semibold uppercase tracking-wider">
+          <div className="relative flex items-center justify-center z-10 py-2">
+            <div className="border-t-2 border-slate-200/60 w-full" />
+            <span className="bg-transparent px-3 text-xs text-slate-400 font-black uppercase tracking-wider">
               Hoặc
             </span>
-            <div className="border-t border-slate-200 w-full" />
+            <div className="border-t-2 border-slate-200/60 w-full" />
           </div>
 
-          <div className="space-y-3">
-            <div className="text-xs font-bold text-slate-700">Tài khoản gia đình có sẵn (Chọn nhanh):</div>
-            <div className="space-y-2 max-h-44 overflow-y-auto">
+          <div className="space-y-4 relative z-10">
+            <div className="text-sm font-black text-slate-700">Tài khoản gia đình có sẵn:</div>
+            <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
               {families.map((fam) => (
                 <div
                   key={fam.id}
                   onClick={() => selectFamily(fam)}
-                  className="p-3 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 cursor-pointer flex items-center justify-between transition-all"
+                  className="p-4 rounded-2xl border-[3px] border-slate-200/50 bg-white/60 hover:bg-teal-50 hover:border-teal-300 cursor-pointer flex items-center justify-between transition-all shadow-sm active:scale-[0.98]"
                 >
                   <div>
-                    <div className="text-xs font-bold text-slate-900">{fam.family_name}</div>
-                    <div className="text-[11px] text-slate-500">Cụ: {fam.elder?.preferred_name || "Cụ"}</div>
+                    <div className="text-sm font-black text-slate-900">{fam.family_name}</div>
+                    <div className="text-xs font-bold text-slate-500 mt-0.5">Cụ: {fam.elder?.preferred_name || "Cụ"}</div>
                   </div>
-                  <span className="text-xs font-mono font-black text-teal-800 bg-teal-100 px-2 py-0.5 rounded-md">
+                  <span className="text-xs font-mono font-black text-teal-800 bg-teal-100 px-3 py-1 rounded-xl shadow-inner border border-teal-200">
                     {fam.pairing_code}
                   </span>
                 </div>
@@ -548,9 +551,9 @@ export function CaregiverDashboard({ gatewayHttpUrl }: CaregiverDashboardProps) 
                 setIsRegisterMode(true);
                 setIsFamilyModalOpen(true);
               }}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-3.5 bg-slate-100/80 hover:bg-slate-200/80 text-slate-700 font-black rounded-2xl text-sm transition-colors flex items-center justify-center gap-2 border-[3px] border-slate-200 shadow-sm active:scale-[0.98]"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               <span>Đăng Ký Gia Đình Mới</span>
             </button>
           </div>
