@@ -1,15 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  Mic,
-  MicOff,
-  Pill,
-  BookOpen,
   ShieldAlert,
   Settings as SettingsIcon,
-  Sparkles,
 } from "lucide-react";
 import { AudioOrb } from "./components/AudioOrb";
-import { BigButton } from "./components/BigButton";
 import { LiveTranscript } from "./components/LiveTranscript";
 import { SosModal } from "./components/SosModal";
 import { MedicationModal } from "./components/MedicationModal";
@@ -22,10 +16,12 @@ import { useLiveSession } from "./hooks/useLiveSession";
 export function App() {
   const [gatewayUrl, setGatewayUrl] = useState<string>(() => {
     const saved = localStorage.getItem("annien_gateway_url");
-    if (saved && saved !== "ws://192.168.1.3:8080/ws/live") {
+    if (saved && !saved.includes("annien.baoduong.dev") && saved !== "ws://192.168.1.3:8080/ws/live") {
       return saved;
     }
-    return "wss://annien.baoduong.dev/ws/live";
+    // Clear old saved URL
+    localStorage.removeItem("annien_gateway_url");
+    return "ws://localhost:8080/ws/live";
   });
   const [isSosOpen, setIsSosOpen] = useState<boolean>(false);
   const [isMedOpen, setIsMedOpen] = useState<boolean>(false);
@@ -66,7 +62,6 @@ export function App() {
     memories,
     aiName: liveAiName,
     isStandby,
-    standbyMessage,
     connect,
     disconnect,
     triggerBargeIn,
@@ -146,6 +141,18 @@ export function App() {
       })
       .catch(() => {});
   }, [pairingCode, gatewayUrl]);
+
+  // Auto-connect khi mở app (1 lần duy nhất)
+  const hasAutoConnected = useRef(false);
+  useEffect(() => {
+    if (pairingCode && status === "idle" && !isStandby && isTauri && !hasAutoConnected.current) {
+      hasAutoConnected.current = true;
+      const timer = setTimeout(() => {
+        connect();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [pairingCode, status, isStandby, isTauri]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleSession = () => {
     if (status === "idle") {
@@ -253,71 +260,39 @@ export function App() {
   }
 
   // 3. Màn hình đàm thoại giọng nói cho cụ trên điện thoại Android (Hands-free Voice UX)
+  // Giao diện tối giản tuyệt đối: AudioOrb + SOS, mọi thứ khác điều khiển bằng giọng nói
   return (
-    <div className="h-[100dvh] max-h-[100dvh] flex flex-col justify-between bg-annien-bg px-3 pt-2 pb-5 sm:px-6 sm:py-4 max-w-4xl mx-auto selection:bg-teal-200 overflow-hidden pt-safe pb-safe">
-      {/* Top Header: Clock, Status & Settings */}
-      <header className="flex items-center justify-between p-3 sm:p-5 bg-gradient-to-r from-white/90 to-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/50 shadow-sm shrink-0">
-        <div className="min-w-0 flex-1">
-          <div className="text-elder-base sm:text-elder-lg font-black text-stone-800 tracking-tight truncate drop-shadow-sm">
+    <div className="h-[100dvh] max-h-[100dvh] flex flex-col bg-annien-bg max-w-4xl mx-auto selection:bg-teal-200 overflow-hidden pt-safe pb-safe">
+      {/* Top bar: chỉ hiện trạng thái nhỏ gọn + nút settings cho kỹ thuật viên */}
+      <header className="flex items-center justify-between px-4 pt-3 pb-1 shrink-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span
+              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                status !== "idle" ? "bg-emerald-400" : isStandby ? "bg-amber-400" : "bg-stone-300"
+              }`}
+            />
+            <span
+              className={`relative inline-flex rounded-full h-3 w-3 ${
+                status !== "idle" ? "bg-emerald-500" : isStandby ? "bg-amber-500" : "bg-stone-400"
+              }`}
+            />
+          </span>
+          <span className="text-base font-bold text-stone-500 truncate">
             {currentTime || `Trợ lý ${effectiveAiName}`}
-          </div>
-          <div className="flex items-center gap-2 sm:gap-2.5 mt-1">
-            <span className="relative flex h-3 w-3 sm:h-4 sm:w-4 shrink-0">
-              <span
-                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  status !== "idle" ? "bg-emerald-400" : isStandby ? "bg-amber-400" : "bg-stone-300"
-                }`}
-              />
-              <span
-                className={`relative inline-flex rounded-full h-3 w-3 sm:h-4 sm:w-4 ${
-                  status !== "idle" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : isStandby ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" : "bg-stone-400"
-                }`}
-              />
-            </span>
-            <span className="text-elder-sm sm:text-elder-base font-bold text-stone-600 truncate">
-              {status !== "idle"
-                ? `Đang trò chuyện cùng ${elderName}`
-                : isStandby
-                ? "Đang nghỉ ngơi (Gọi 'Cháu ơi')"
-                : "Sẵn sàng lắng nghe"}
-            </span>
-          </div>
-        </div>
-
-        {/* Cài đặt cấu hình */}
-        <div className="flex items-center gap-2 ml-3 shrink-0">
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            aria-label="Cài đặt kết nối"
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.25rem] bg-stone-50/80 border border-stone-200/60 shadow-sm flex items-center justify-center text-stone-600 hover:bg-white hover:text-stone-900 active:scale-95 transition-all backdrop-blur-sm"
-          >
-            <SettingsIcon className="w-6 h-6 sm:w-7 sm:h-7" />
-          </button>
-        </div>
-      </header>
-
-      {/* Voice Control Wake-Word Banner */}
-      <div className="my-2 sm:my-3 bg-gradient-to-r from-teal-700 to-emerald-600 text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl shadow-lg shadow-teal-700/20 flex items-center justify-between gap-2 text-elder-sm sm:text-elder-base font-black shrink-0 relative overflow-hidden">
-        {/* Subtle inner glow / decorative shine */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-        <div className="flex items-center gap-2.5 truncate relative z-10">
-          <Sparkles className="w-6 h-6 text-amber-300 shrink-0 animate-spin drop-shadow-sm" style={{ animationDuration: "6s" }} />
-          <span className="truncate drop-shadow-md">
-            Khẩu lệnh: Gọi <span className="text-amber-200 font-black">"Cháu ơi"</span> hoặc <span className="text-amber-200 font-black">"{effectiveAiName} ơi"</span>
           </span>
         </div>
-      </div>
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          aria-label="Cài đặt"
+          className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-400 active:scale-95 transition-all shrink-0"
+        >
+          <SettingsIcon className="w-5 h-5" />
+        </button>
+      </header>
 
-      {/* Standby Message Notice */}
-      {isStandby && (
-        <div className="mb-2 p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/60 rounded-2xl sm:rounded-3xl text-amber-900 font-bold text-elder-sm sm:text-elder-base flex items-center justify-center gap-2 shadow-sm animate-fade-in text-center shrink-0">
-          <span className="text-2xl drop-shadow-sm">💤</span>
-          <span>{standbyMessage || `Cháu đang nghỉ ngơi. Cụ chỉ cần gọi "Cháu ơi" là cháu có mặt ngay ạ!`}</span>
-        </div>
-      )}
-
-      {/* Center Stage: Minimalist Soundwave Orb & Subtitles */}
-      <main className="flex-1 min-h-0 flex flex-col items-center justify-center my-1 sm:my-2 space-y-3 sm:space-y-4 overflow-y-auto">
+      {/* Center Stage: AudioOrb chiếm toàn bộ trung tâm */}
+      <main className="flex-1 min-h-0 flex flex-col items-center justify-center px-4 overflow-hidden">
         <AudioOrb
           state={status}
           volumeLevel={volumeLevel}
@@ -325,52 +300,24 @@ export function App() {
           onBargeIn={triggerBargeIn}
         />
 
-        {/* Subtitles Area */}
-        <div className="w-full max-w-xl px-2">
+        {/* Phụ đề đàm thoại */}
+        <div className="w-full max-w-md mt-2">
           <LiveTranscript items={transcripts} />
         </div>
       </main>
 
-      {/* Bottom Bar: 4 Big Tactile Elder Buttons */}
-      <footer className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 shrink-0 pt-2">
-        {/* Button 1: Conversation Toggle */}
-        <BigButton
-          label={status === "idle" ? "Trò Chuyện" : "Nghỉ Ngơi"}
-          subLabel={status === "idle" ? "Bật mic" : "Tạm dừng"}
-          icon={status === "idle" ? <Mic className="w-6 h-6 sm:w-8 sm:h-8" /> : <MicOff className="w-6 h-6 sm:w-8 sm:h-8" />}
-          variant={status === "idle" ? "primary" : "neutral"}
-          onClick={handleToggleSession}
-        />
-
-        {/* Button 2: Medication Reminders */}
-        <BigButton
-          label="Nhắc Thuốc"
-          subLabel={`${medications.length} đơn thuốc`}
-          icon={<Pill className="w-6 h-6 sm:w-8 sm:h-8" />}
-          variant="amber"
-          onClick={() => setIsMedOpen(true)}
-        />
-
-        {/* Button 3: Memories & Diary */}
-        <BigButton
-          label="Kỷ Niệm"
-          subLabel="Nhật ký an sinh"
-          icon={<BookOpen className="w-6 h-6 sm:w-8 sm:h-8" />}
-          variant="neutral"
-          onClick={() => setIsMoodOpen(true)}
-        />
-
-        {/* Button 4: Emergency SOS (High contrast Crimson) */}
-        <BigButton
-          label="SOS KHẨN CẤP"
-          subLabel="Gọi cứu hộ ngay"
-          icon={<ShieldAlert className="w-6 h-6 sm:w-8 sm:h-8" />}
-          variant="crimson"
+      {/* Bottom: Nút SOS duy nhất — lớn, rõ ràng, dễ chạm */}
+      <footer className="px-4 pb-4 pt-2 shrink-0">
+        <button
           onClick={() => setIsSosOpen(true)}
-        />
+          className="w-full py-5 bg-gradient-to-br from-red-500 to-red-700 text-white rounded-2xl font-black text-2xl flex items-center justify-center gap-3 border-b-4 border-red-800 shadow-lg shadow-red-600/30 active:scale-[0.98] active:border-b-2 active:translate-y-[2px] transition-all"
+        >
+          <ShieldAlert className="w-8 h-8" />
+          <span>SOS KHẨN CẤP</span>
+        </button>
       </footer>
 
-      {/* Interactive Modals */}
+      {/* Modals — vẫn giữ để hiển thị khi AI trigger qua giọng nói */}
       <SosModal
         isOpen={isSosOpen}
         onClose={() => setIsSosOpen(false)}

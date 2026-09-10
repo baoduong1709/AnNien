@@ -1,7 +1,7 @@
 import React from "react";
-import { Mic, Volume2, Sparkles, Hand } from "lucide-react";
+import { Mic, Volume2, Sparkles, Hand, Ear } from "lucide-react";
 
-export type SessionState = "idle" | "listening" | "thinking" | "speaking";
+export type SessionState = "idle" | "vad_listening" | "listening" | "thinking" | "speaking";
 
 interface AudioOrbProps {
   state: SessionState;
@@ -19,11 +19,17 @@ export const AudioOrb: React.FC<AudioOrbProps> = ({
   // Determine color and status description based on state
   let bgClass = "bg-radial-idle shadow-stone-300/50";
   let ringColor = "border-stone-300";
-  let statusText = "Chạm để bắt đầu trò chuyện";
-  let subText = "An Nhiên luôn ở đây lắng nghe cụ";
-  let icon = <Mic className="w-16 h-16 text-stone-700 drop-shadow-md" />;
+  let statusText = "Đang kết nối...";
+  let subText = "An Nhiên sẽ lắng nghe cụ ngay";
+  let icon = <Mic className="w-16 h-16 text-stone-700 drop-shadow-md animate-pulse" />;
 
-  if (state === "listening") {
+  if (state === "vad_listening") {
+    bgClass = "bg-radial-idle shadow-stone-400/40";
+    ringColor = "border-stone-400";
+    statusText = "An Nhiên đang lắng nghe...";
+    subText = "Cụ cứ gọi con bất cứ lúc nào";
+    icon = <Ear className="w-16 h-16 text-stone-600 animate-pulse drop-shadow-md" />;
+  } else if (state === "listening") {
     bgClass = "bg-radial-listening shadow-emerald-500/50";
     ringColor = "border-emerald-400";
     statusText = "Con đang lắng nghe cụ nói...";

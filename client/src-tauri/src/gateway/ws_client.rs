@@ -36,9 +36,32 @@ impl GatewayClient {
         // Close any existing connection sender
         self.disconnect();
 
-        let (ws_stream, _) = connect_async(&url)
-            .await
-            .map_err(|e| format!("Failed to connect to gateway: {}", e))?;
+        println!("[GatewayClient] Connecting to: {}", url);
+
+        // Install ring CryptoProvider for rustls (required on Android)
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
+        // 10-second timeout to avoid hanging on TLS issues
+        let connect_result = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            connect_async(&url)
+        ).await;
+
+        let (ws_stream, response) = match connect_result {
+            Ok(Ok((stream, resp))) => (stream, resp),
+            Ok(Err(e)) => {
+                let err_msg = format!("WebSocket connection error: {}", e);
+                eprintln!("[GatewayClient] {}", err_msg);
+                return Err(err_msg);
+            }
+            Err(_) => {
+                let err_msg = "WebSocket connection timed out after 10s (possible TLS/Cloudflare issue)".to_string();
+                eprintln!("[GatewayClient] {}", err_msg);
+                return Err(err_msg);
+            }
+        };
+
+        println!("[GatewayClient] Connected! HTTP status: {}", response.status());
 
         let (mut write, mut read) = ws_stream.split();
         let (tx, mut rx) = mpsc::unbounded_channel::<String>();
@@ -52,30 +75,34 @@ impl GatewayClient {
         tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 if let Err(e) = write.send(Message::Text(msg)).await {
-                    eprintln!("Error sending websocket message: {}", e);
+                    eprintln!("[GatewayClient] Send error: {}", e);
                     break;
                 }
             }
+            println!("[GatewayClient] Outgoing sender task ended");
         });
 
         // Incoming receiver task
         tokio::spawn(async move {
+            println!("[GatewayClient] Listening for incoming messages...");
             while let Some(msg_res) = read.next().await {
                 match msg_res {
                     Ok(Message::Text(text)) => {
+                        println!("[GatewayClient] Received message: {}...", &text[..text.len().min(100)]);
                         on_message(text);
                     }
                     Ok(Message::Close(_)) => {
-                        println!("Gateway WebSocket closed by server.");
+                        println!("[GatewayClient] WebSocket closed by server.");
                         break;
                     }
                     Err(e) => {
-                        eprintln!("WebSocket read error: {}", e);
+                        eprintln!("[GatewayClient] WebSocket read error: {}", e);
                         break;
                     }
                     _ => {}
                 }
             }
+            println!("[GatewayClient] Incoming receiver task ended");
         });
 
         Ok(())

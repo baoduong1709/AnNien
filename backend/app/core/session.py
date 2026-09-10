@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from typing import Dict, Optional, Set
 from fastapi import WebSocket
 from app.core.live_client import GeminiLiveClient
@@ -23,6 +24,7 @@ class LiveSession:
         self.live_client = GeminiLiveClient()
         self.is_active = False
         self.is_model_speaking = False
+        self._last_speech_time = time.time()
         self._tasks: Set[asyncio.Task] = set()
 
     async def start(self):
@@ -89,7 +91,8 @@ class LiveSession:
             self.live_client.listen_loop(
                 on_audio_chunk=self._on_upstream_audio,
                 on_transcript=self._on_upstream_transcript,
-                on_barge_in=self._on_upstream_barge_in
+                on_barge_in=self._on_upstream_barge_in,
+                on_turn_complete=self._on_upstream_turn_complete
             )
         )
         self._tasks.add(upstream_task)
@@ -111,6 +114,9 @@ class LiveSession:
 
     def _on_upstream_audio(self, pcm_base64: str):
         """Upstream Gemini generated a 24kHz PCM audio chunk."""
+        if not self.is_model_speaking:
+            elapsed = time.time() - getattr(self, "_last_speech_time", time.time())
+            logger.info(f"⚡ [LATENCY] Gemini started speaking! Time since last user speech: {elapsed:.2f}s")
         self.is_model_speaking = True
         asyncio.create_task(self.send_json({
             "type": "audio_chunk",
@@ -120,6 +126,7 @@ class LiveSession:
 
     def _on_upstream_transcript(self, role: str, text: str):
         """Upstream Gemini generated speech-to-text or model transcript."""
+        logger.info(f"📝 [TRANSCRIPT] {role}: {text}")
         asyncio.create_task(self.send_json({
             "type": "transcript",
             "role": role,
@@ -135,6 +142,14 @@ class LiveSession:
             "reason": "upstream_interrupted"
         }))
 
+    def _on_upstream_turn_complete(self):
+        """Gemini finished all audio chunks for this turn."""
+        logger.info("🏁 [TURN] Gemini finished generating audio response.")
+        self.is_model_speaking = False
+        asyncio.create_task(self.send_json({
+            "type": "turn_complete"
+        }))
+
     async def handle_client_message(self, data: str):
         """Processes an incoming JSON message from the Client WebSocket."""
         try:
@@ -145,17 +160,7 @@ class LiveSession:
                 # Audio from client microphone (PCM 16kHz base64)
                 pcm_b64 = msg.get("data", "")
                 if pcm_b64:
-                    # Check for client-side Barge-In if AI is currently speaking
-                    if self.is_model_speaking:
-                        raw_bytes = AudioRelay.decode_base64_pcm(pcm_b64)
-                        if AudioRelay.is_speech_active(raw_bytes, threshold_rms=0.03):
-                            logger.info("Local barge-in detected! Elder interrupted playing audio.")
-                            self.is_model_speaking = False
-                            await self.send_json({
-                                "type": "barge_in",
-                                "reason": "elder_spoke"
-                            })
-
+                    self._last_speech_time = time.time()
                     # Relay to Gemini Live API
                     await self.live_client.send_audio_chunk(pcm_b64)
 

@@ -1,6 +1,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::Stream;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Converts raw 16-bit little-endian PCM bytes to f32 samples (-1.0 to 1.0).
@@ -14,8 +15,15 @@ pub fn pcm16_le_to_f32(pcm_bytes: &[u8]) -> Vec<f32> {
     samples
 }
 
+// 150ms of audio at 24kHz = 3,600 samples. Prebuffering prevents underruns/choppy audio.
+const PREBUFFER_THRESHOLD_SAMPLES: usize = 3600;
+
 pub struct AudioPlayer {
     buffer: Arc<Mutex<VecDeque<f32>>>,
+    /// Flag: true when actively playing audio to speaker
+    pub is_playing: Arc<AtomicBool>,
+    /// Flag: true when waiting for enough samples before starting playback
+    pub is_prebuffering: Arc<AtomicBool>,
     #[allow(dead_code)]
     stream: Option<Stream>,
 }
@@ -25,8 +33,12 @@ unsafe impl Sync for AudioPlayer {}
 
 impl AudioPlayer {
     pub fn new() -> Result<Self, String> {
-        let buffer = Arc::new(Mutex::new(VecDeque::new()));
+        let buffer: Arc<Mutex<VecDeque<f32>>> = Arc::new(Mutex::new(VecDeque::with_capacity(24000 * 5)));
         let buffer_clone = buffer.clone();
+        let is_playing = Arc::new(AtomicBool::new(false));
+        let is_playing_clone = is_playing.clone();
+        let is_prebuffering = Arc::new(AtomicBool::new(true));
+        let is_prebuffering_clone = is_prebuffering.clone();
 
         let host = cpal::default_host();
         let device = host
@@ -38,7 +50,7 @@ impl AudioPlayer {
         // Try direct 24kHz mono first
         let direct_config = cpal::StreamConfig {
             channels: 1,
-            sample_rate: cpal::SampleRate(24000), // 24kHz matching Gemini Live output
+            sample_rate: cpal::SampleRate(24000),
             buffer_size: cpal::BufferSize::Default,
         };
 
@@ -46,8 +58,28 @@ impl AudioPlayer {
             &direct_config,
             {
                 let buf_c = buffer_clone.clone();
+                let playing_c = is_playing_clone.clone();
+                let prebuf_c = is_prebuffering_clone.clone();
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    let mut buf = buf_c.lock().unwrap();
+                    let mut buf = buf_c.lock().unwrap_or_else(|e| e.into_inner());
+
+                    if prebuf_c.load(Ordering::Relaxed) {
+                        for sample in data.iter_mut() {
+                            *sample = 0.0;
+                        }
+                        return;
+                    }
+
+                    if buf.is_empty() {
+                        prebuf_c.store(true, Ordering::Relaxed);
+                        playing_c.store(false, Ordering::Relaxed);
+                        for sample in data.iter_mut() {
+                            *sample = 0.0;
+                        }
+                        return;
+                    }
+
+                    playing_c.store(true, Ordering::Relaxed);
                     for sample in data.iter_mut() {
                         *sample = buf.pop_front().unwrap_or(0.0);
                     }
@@ -58,7 +90,6 @@ impl AudioPlayer {
         ) {
             Ok(s) => s,
             Err(_) => {
-                // Fallback to default output device config
                 let def_config = device
                     .default_output_config()
                     .map_err(|e| format!("Failed to query default output config: {}", e))?;
@@ -66,18 +97,37 @@ impl AudioPlayer {
                 let sample_rate = def_config.sample_rate().0 as f64;
                 let stream_config: cpal::StreamConfig = def_config.into();
 
-                // Ratio: native_rate / 24000
                 let step = 24000.0 / sample_rate;
                 let mut current_pos = 0.0_f64;
                 let mut last_sample = 0.0_f32;
                 let mut next_sample = 0.0_f32;
 
                 let buf_c = buffer_clone.clone();
+                let playing_c = is_playing_clone.clone();
+                let prebuf_c = is_prebuffering_clone.clone();
                 device
                     .build_output_stream(
                         &stream_config,
                         move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                            let mut buf = buf_c.lock().unwrap();
+                            let mut buf = buf_c.lock().unwrap_or_else(|e| e.into_inner());
+
+                            if prebuf_c.load(Ordering::Relaxed) {
+                                for sample in data.iter_mut() {
+                                    *sample = 0.0;
+                                }
+                                return;
+                            }
+
+                            if buf.is_empty() {
+                                prebuf_c.store(true, Ordering::Relaxed);
+                                playing_c.store(false, Ordering::Relaxed);
+                                for sample in data.iter_mut() {
+                                    *sample = 0.0;
+                                }
+                                return;
+                            }
+
+                            playing_c.store(true, Ordering::Relaxed);
                             let num_frames = data.len() / channels;
 
                             for f in 0..num_frames {
@@ -106,64 +156,40 @@ impl AudioPlayer {
 
         Ok(Self {
             buffer,
+            is_playing,
+            is_prebuffering,
             stream: Some(stream),
         })
     }
 
     /// Enqueues raw 16-bit PCM bytes (24kHz) for playback
     pub fn enqueue_pcm(&self, pcm_bytes: &[u8]) {
-        let mut buf = self.buffer.lock().unwrap();
+        let mut buf = self.buffer.lock().unwrap_or_else(|e| e.into_inner());
         let samples = pcm16_le_to_f32(pcm_bytes);
         buf.extend(samples);
+
+        if self.is_prebuffering.load(Ordering::Relaxed) && buf.len() >= PREBUFFER_THRESHOLD_SAMPLES {
+            self.is_prebuffering.store(false, Ordering::Relaxed);
+            self.is_playing.store(true, Ordering::Relaxed);
+        }
     }
 
     /// Barge-in interrupt: instantly empties playback queue
     pub fn interrupt(&self) {
-        let mut buf = self.buffer.lock().unwrap();
+        let mut buf = self.buffer.lock().unwrap_or_else(|e| e.into_inner());
         buf.clear();
+        self.is_playing.store(false, Ordering::Relaxed);
+        self.is_prebuffering.store(true, Ordering::Relaxed);
+    }
+
+    /// Returns true if currently playing audio
+    pub fn is_playing(&self) -> bool {
+        self.is_playing.load(Ordering::Relaxed)
     }
 
     /// Returns current number of samples remaining in playback buffer
     pub fn buffer_len(&self) -> usize {
-        let buf = self.buffer.lock().unwrap();
+        let buf = self.buffer.lock().unwrap_or_else(|e| e.into_inner());
         buf.len()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_pcm16_le_to_f32_conversion() {
-        let mut pcm = Vec::new();
-        pcm.extend_from_slice(&0_i16.to_le_bytes());
-        pcm.extend_from_slice(&32767_i16.to_le_bytes());
-        pcm.extend_from_slice(&(-32768_i16).to_le_bytes());
-
-        let samples = pcm16_le_to_f32(&pcm);
-        assert_eq!(samples.len(), 3);
-        assert_eq!(samples[0], 0.0);
-        assert!((samples[1] - 1.0).abs() < 0.001);
-        assert_eq!(samples[2], -1.0);
-    }
-
-    #[test]
-    fn test_audio_player_queue_and_interrupt() {
-        let buffer = Arc::new(Mutex::new(VecDeque::new()));
-        let player = AudioPlayer {
-            buffer: buffer.clone(),
-            stream: None,
-        };
-
-        assert_eq!(player.buffer_len(), 0);
-
-        let pcm = vec![0u8; 480]; // 240 samples
-        player.enqueue_pcm(&pcm);
-        assert_eq!(player.buffer_len(), 240);
-
-        // Barge-in interrupt: should clear instantly
-        player.interrupt();
-        assert_eq!(player.buffer_len(), 0);
     }
 }

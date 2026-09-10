@@ -5,7 +5,7 @@ import { MoodItem, MemoryItem } from "../components/MoodHistoryModal";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
-export type SessionStatus = "idle" | "listening" | "thinking" | "speaking";
+export type SessionStatus = "idle" | "vad_listening" | "listening" | "thinking" | "speaking";
 
 interface UseLiveSessionOptions {
   gatewayWsUrl: string;
@@ -86,11 +86,15 @@ export function useLiveSession({
       if (msg.ai_name) setAiName(msg.ai_name);
       if (msg.wake_words) setWakeWords(msg.wake_words);
     } else if (type === "audio_chunk") {
-      setStatus("speaking");
-      // If running in browser mode (not Tauri), play via Web Audio API queue
-      if (!isTauriApp() && msg.data) {
-        play24kPcmChunkWeb(msg.data);
+      // In web mode, manage status and Web Audio queue
+      if (!isTauriApp()) {
+        setStatus("speaking");
+        if (msg.data) {
+          play24kPcmChunkWeb(msg.data);
+        }
       }
+    } else if (type === "turn_complete") {
+      console.log("Model turn completed");
     } else if (type === "transcript") {
       setTranscripts((prev) => [
         ...prev,
@@ -101,12 +105,10 @@ export function useLiveSession({
           timestamp: new Date().toISOString(),
         },
       ]);
-      if (msg.role === "model") {
-        setStatus("speaking");
-      }
     } else if (type === "barge_in") {
       console.log("Barge-in event received:", msg.reason);
       stopAllPlayback();
+      setStatus("listening");
     } else if (type === "sos_alert") {
       console.warn("CRITICAL SOS ALERT DISPATCHED:", msg);
       if (onSosAlert) {
@@ -171,6 +173,20 @@ export function useLiveSession({
             handleIncomingMessage(parsed);
           } catch (e) {
             console.error("Failed to parse gateway message from Rust:", e);
+          }
+        });
+
+        // 1b. Listen for real hardware playback state from Rust AudioPlayer
+        await listen<string>("playback_state", (event) => {
+          try {
+            const parsed = JSON.parse(event.payload);
+            if (parsed.is_playing) {
+              setStatus("speaking");
+            } else {
+              setStatus("listening");
+            }
+          } catch (e) {
+            console.error("Failed to parse playback_state:", e);
           }
         });
 
@@ -453,85 +469,91 @@ export function useLiveSession({
     }
   };
 
-  // Ambient Wake-Word Speech Recognition (Hands-free wakeup when idle or standby)
-  useEffect(() => {
-    if (status !== "idle" || !isWakeWordListening) return;
+  // VAD (Voice Activity Detection) — lắng nghe mic thụ động
+  const vadUnlistenRef = useRef<UnlistenFn | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const SILENCE_TIMEOUT_MS = 5 * 60 * 1000; // 5 phút
 
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) return;
-
-    let recognition: any = null;
-    let isStopped = false;
+  // Start VAD mode: mic on, chỉ phát hiện giọng nói, không stream
+  const startVad = useCallback(async () => {
+    if (!isTauriApp()) return;
 
     try {
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "vi-VN";
-
-      recognition.onresult = (event: any) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const rawText = event.results[i][0]?.transcript?.toLowerCase() || "";
-          const normText = rawText.trim();
-          const targetName = (aiName || "An Nhiên").toLowerCase();
-
-          const isWakeWord =
-            normText.includes("cháu ơi") ||
-            normText.includes("chau oi") ||
-            normText.includes("an nhiên ơi") ||
-            normText.includes("an nhien") ||
-            normText.includes(`${targetName} ơi`) ||
-            normText.includes(targetName);
-
-          if (isWakeWord) {
-            console.log("Wake word detected in ambient mode:", normText);
-            try {
-              recognition.stop();
-            } catch (e) {}
-            isStopped = true;
-            setIsStandby(false);
-            connect();
-            break;
-          }
-        }
-      };
-
-      recognition.onerror = (err: any) => {
-        if (err.error !== "no-speech" && err.error !== "aborted") {
-          console.warn("Ambient SpeechRecognition event:", err.error);
-        }
-      };
-
-      recognition.onend = () => {
-        if (!isStopped && status === "idle") {
-          try {
-            recognition.start();
-          } catch (e) {}
-        }
-      };
-
-      recognition.start();
-    } catch (e) {
-      console.warn("Could not start ambient wake word listener:", e);
-    }
-
-    return () => {
-      isStopped = true;
-      if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {}
+      // Cleanup old VAD listener
+      if (vadUnlistenRef.current) {
+        vadUnlistenRef.current();
+        vadUnlistenRef.current = null;
       }
-    };
-  }, [status, isWakeWordListening, aiName, connect]);
+
+      // Listen for voice_detected event from Rust
+      vadUnlistenRef.current = await listen<string>("voice_detected", () => {
+        console.log("[VAD] Voice detected → connecting to Gemini...");
+        // Stop VAD, start full session
+        invoke("stop_vad_listening").catch(() => {});
+        connect();
+      });
+
+      // Start Rust VAD
+      await invoke("start_vad_listening");
+      setStatus("vad_listening");
+      console.log("[VAD] Passive voice detection started");
+    } catch (err) {
+      console.error("Failed to start VAD:", err);
+      setStatus("idle");
+    }
+  }, [connect]);
+
+  // Disconnect AI session and return to VAD mode
+  const disconnectToVad = useCallback(async () => {
+    console.log("[Silence] 5 min timeout → disconnecting, returning to VAD...");
+    await disconnect();
+    // Small delay then restart VAD
+    setTimeout(() => {
+      startVad();
+    }, 1000);
+  }, [disconnect, startVad]);
+
+  // Silence timeout: reset 5-min timer on each incoming message (user or AI talking)
+  const resetSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    silenceTimerRef.current = setTimeout(() => {
+      disconnectToVad();
+    }, SILENCE_TIMEOUT_MS);
+  }, [disconnectToVad]);
+
+  // Reset silence timer whenever status changes to active states
+  useEffect(() => {
+    if (status === "listening" || status === "thinking" || status === "speaking") {
+      resetSilenceTimer();
+    } else {
+      // Clear timer when not in active session
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+    }
+  }, [status, resetSilenceTimer]);
+
+  // Also reset timer on each incoming transcript (means conversation is active)
+  useEffect(() => {
+    if (transcripts.length > 0 && (status === "listening" || status === "speaking")) {
+      resetSilenceTimer();
+    }
+  }, [transcripts.length, status, resetSilenceTimer]);
 
   // Clean up on component unmount
   useEffect(() => {
     return () => {
       if (tauriUnlistenRef.current) {
         tauriUnlistenRef.current();
+      }
+      if (vadUnlistenRef.current) {
+        vadUnlistenRef.current();
+      }
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
       }
     };
   }, []);
@@ -551,6 +573,8 @@ export function useLiveSession({
     setIsWakeWordListening,
     connect,
     disconnect,
+    disconnectToVad,
+    startVad,
     sendTextTurn,
     triggerBargeIn,
     triggerSos,

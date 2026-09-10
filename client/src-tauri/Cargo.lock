@@ -72,6 +72,7 @@ dependencies = [
  "env_logger",
  "futures-util",
  "log",
+ "rustls",
  "serde",
  "serde_json",
  "tauri",
@@ -79,6 +80,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "tokio-tungstenite",
+ "webrtc-vad",
 ]
 
 [[package]]
@@ -3255,7 +3257,9 @@ version = "0.23.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
 dependencies = [
+ "log",
  "once_cell",
+ "ring",
  "rustls-pki-types",
  "rustls-webpki",
  "subtle",
@@ -4875,6 +4879,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a"
 dependencies = [
  "rustls-pki-types",
+]
+
+[[package]]
+name = "webrtc-vad"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39a1e40fd6ca90be95459152a2537f2ba4286ee1b13073f7ebcaa74fc94e3008"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

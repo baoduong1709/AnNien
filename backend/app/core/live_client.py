@@ -149,20 +149,25 @@ class GeminiLiveClient:
             # In mock mode, we simulate activity
             return
 
+        if not self.ws:
+            logger.warning("send_audio_chunk called but ws is None")
+            return
+
         payload = {
             "realtimeInput": {
-                "mediaChunks": [
-                    {
-                        "mimeType": "audio/pcm;rate=16000",
-                        "data": base64_pcm_16k
-                    }
-                ]
+                "audio": {
+                    "mimeType": "audio/pcm;rate=16000",
+                    "data": base64_pcm_16k
+                }
             }
         }
         try:
             await self.ws.send(json.dumps(payload))
+        except websockets.ConnectionClosed as e:
+            logger.error(f"Gemini WS closed when sending audio: code={e.code} reason={e.reason}")
+            raise
         except Exception as e:
-            logger.error(f"Error sending audio chunk to Gemini: {e}")
+            logger.error(f"Error sending audio chunk to Gemini: {type(e).__name__}: {e}")
 
     async def send_text_turn(self, text: str):
         """Sends text input as a user turn."""
@@ -213,7 +218,13 @@ class GeminiLiveClient:
         except Exception as e:
             logger.error(f"Error sending tool response: {e}")
 
-    async def listen_loop(self, on_audio_chunk: Callable[[str], None], on_transcript: Callable[[str, str], None], on_barge_in: Callable[[], None]):
+    async def listen_loop(
+        self,
+        on_audio_chunk: Callable[[str], None],
+        on_transcript: Callable[[str, str], None],
+        on_barge_in: Callable[[], None],
+        on_turn_complete: Optional[Callable[[], None]] = None
+    ):
         """
         Background receiver loop processing serverContent, audio chunks, toolCalls, and barge-in events.
         """
@@ -256,6 +267,12 @@ class GeminiLiveClient:
                             if text_part:
                                 on_transcript("model", text_part)
 
+                    # Check if model turn is complete
+                    if server_content.get("turnComplete"):
+                        logger.info("Gemini Live model turnComplete.")
+                        if on_turn_complete:
+                            on_turn_complete()
+
                 # 3. Tool Calls (Function Calling)
                 tool_call = msg.get("toolCall")
                 if tool_call:
@@ -273,12 +290,12 @@ class GeminiLiveClient:
                         await self.send_tool_response(call_id, name, result)
 
         except websockets.ConnectionClosed as e:
-            logger.info(f"Gemini Live WebSocket connection closed: {e}")
+            logger.error(f"Gemini Live WebSocket CLOSED: code={e.code} reason={e.reason}")
             if self._on_message_callback:
                 self._on_message_callback({
                     "type": "transcript",
                     "role": "system",
-                    "text": f"Kết nối tới AI bị gián đoạn. Vui lòng bấm nút Trò Chuyện để kết nối lại.",
+                    "text": f"Kết nối tới AI bị gián đoạn (code={e.code}). Vui lòng bấm nút Trò Chuyện để kết nối lại.",
                     "is_final": True
                 })
         except Exception as e:

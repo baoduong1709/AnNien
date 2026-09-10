@@ -63,9 +63,17 @@ pub fn downsample_and_mix_to_16k_mono(input: &[f32], channels: u16, src_rate: u3
     resampled
 }
 
+/// RMS energy threshold for voice activity detection.
+/// Typical quiet room: 0.001-0.005, speech: 0.02-0.15
+const VAD_THRESHOLD: f32 = 0.015;
+/// Number of consecutive voice-active chunks before triggering voice_detected
+const VAD_TRIGGER_CHUNKS: u32 = 3;
+
 pub struct AudioCapture {
     stream: Option<Stream>,
+    vad_stream: Option<Stream>,
     is_running: Arc<AtomicBool>,
+    is_vad_running: Arc<AtomicBool>,
 }
 
 unsafe impl Send for AudioCapture {}
@@ -75,7 +83,9 @@ impl AudioCapture {
     pub fn new() -> Self {
         Self {
             stream: None,
+            vad_stream: None,
             is_running: Arc::new(AtomicBool::new(false)),
+            is_vad_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -85,9 +95,10 @@ impl AudioCapture {
     where
         F: FnMut(Vec<u8>) + Send + 'static,
     {
-        if self.is_running.load(Ordering::SeqCst) {
-            return Ok(());
-        }
+        // Always stop previous capture and VAD to avoid stale callbacks
+        self.stop();
+        self.stop_vad();
+        println!("[AudioCapture] Starting 16kHz capture...");
 
         let host = cpal::default_host();
         let device = host
@@ -117,9 +128,8 @@ impl AudioCapture {
                 }
                 let pcm = convert_f32_to_pcm16_le(data);
                 if !pcm.is_empty() {
-                    if let Ok(mut lock) = cb_direct.lock() {
-                        (lock)(pcm);
-                    }
+                    let mut lock = cb_direct.lock().unwrap_or_else(|e| e.into_inner());
+                    (lock)(pcm);
                 }
             },
             err_fn,
@@ -148,9 +158,8 @@ impl AudioCapture {
                             let resampled = downsample_and_mix_to_16k_mono(data, channels, sample_rate);
                             let pcm = convert_f32_to_pcm16_le(&resampled);
                             if !pcm.is_empty() {
-                                if let Ok(mut lock) = cb_fb.lock() {
-                                    (lock)(pcm);
-                                }
+                                let mut lock = cb_fb.lock().unwrap_or_else(|e| e.into_inner());
+                                (lock)(pcm);
                             }
                         },
                         err_fn,
@@ -171,6 +180,98 @@ impl AudioCapture {
     pub fn stop(&mut self) {
         self.is_running.store(false, Ordering::SeqCst);
         self.stream = None;
+    }
+
+    /// Start VAD mode: mic is on, but only detects voice activity (no audio streaming).
+    /// Calls on_voice_detected() when sustained speech is detected.
+    pub fn start_vad<F>(&mut self, on_voice_detected: F) -> Result<(), String>
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        if self.is_vad_running.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
+        // Stop regular capture if running (can't share mic)
+        self.stop();
+
+        let host = cpal::default_host();
+        let device = host
+            .default_input_device()
+            .ok_or_else(|| "No default audio input device found".to_string())?;
+
+        self.is_vad_running.store(true, Ordering::SeqCst);
+        let is_vad_running = self.is_vad_running.clone();
+
+        let callback = Arc::new(on_voice_detected);
+        let voice_chunk_count = Arc::new(std::sync::atomic::AtomicU32::new(0));
+
+        let err_fn = |err| eprintln!("VAD audio stream error: {}", err);
+
+        // Use default config for VAD (less strict than 16kHz)
+        let def_config = device
+            .default_input_config()
+            .map_err(|e| format!("Failed to query default input config: {}", e))?;
+        let channels = def_config.channels();
+        let stream_config: cpal::StreamConfig = def_config.into();
+
+        let stream = device
+            .build_input_stream(
+                &stream_config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if !is_vad_running.load(Ordering::SeqCst) {
+                        return;
+                    }
+
+                    // Downmix to mono for RMS calculation
+                    let ch = channels.max(1) as usize;
+                    let num_frames = data.len() / ch;
+                    if num_frames == 0 {
+                        return;
+                    }
+
+                    // Calculate RMS energy
+                    let mut sum: f32 = 0.0;
+                    for f in 0..num_frames {
+                        let start = f * ch;
+                        let mono_sample: f32 = data[start..start + ch].iter().sum::<f32>() / ch as f32;
+                        sum += mono_sample * mono_sample;
+                    }
+                    let rms = (sum / num_frames as f32).sqrt();
+
+                    if rms > VAD_THRESHOLD {
+                        let count = voice_chunk_count.fetch_add(1, Ordering::SeqCst);
+                        if count + 1 >= VAD_TRIGGER_CHUNKS {
+                            // Sustained voice detected!
+                            (callback)();
+                            // Reset counter
+                            voice_chunk_count.store(0, Ordering::SeqCst);
+                        }
+                    } else {
+                        // Reset consecutive counter on silence
+                        voice_chunk_count.store(0, Ordering::SeqCst);
+                    }
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| format!("Failed to build VAD input stream: {}", e))?;
+
+        stream
+            .play()
+            .map_err(|e| format!("Failed to play VAD stream: {}", e))?;
+
+        self.vad_stream = Some(stream);
+        Ok(())
+    }
+
+    pub fn stop_vad(&mut self) {
+        self.is_vad_running.store(false, Ordering::SeqCst);
+        self.vad_stream = None;
+    }
+
+    pub fn is_vad_active(&self) -> bool {
+        self.is_vad_running.load(Ordering::SeqCst)
     }
 
     pub fn is_capturing(&self) -> bool {

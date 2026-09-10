@@ -3,7 +3,7 @@ pub mod commands;
 pub mod gateway;
 
 use audio::capture::AudioCapture;
-use commands::{barge_in, send_text, start_listening, stop_listening, trigger_emergency_sos, AppState};
+use commands::{barge_in, send_text, start_listening, start_vad_listening, stop_listening, stop_vad_listening, trigger_emergency_sos, AppState};
 use gateway::ws_client::GatewayClient;
 use std::sync::{Arc, Mutex};
 
@@ -25,6 +25,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             start_listening,
             stop_listening,
+            start_vad_listening,
+            stop_vad_listening,
             barge_in,
             send_text,
             trigger_emergency_sos
